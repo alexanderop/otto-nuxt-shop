@@ -4,6 +4,8 @@ A simplified otto.de clone for a talk. Built with Nuxt 4 and OTTO's open-source
 [B2B Design System](https://github.com/otto-de/b2b-design-system)
 (`@otto-de/b2b-core-components`, Stencil web components).
 
+> **Unofficial demo.** Not affiliated with or endorsed by OTTO. No real shop, no checkout. Product data and images come from [dummyjson.com](https://dummyjson.com).
+
 ```bash
 pnpm install
 pnpm dev        # http://localhost:3000
