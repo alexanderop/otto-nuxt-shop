@@ -13,7 +13,7 @@ pnpm dev        # http://localhost:3000
 
 | Route | What it shows |
 | --- | --- |
-| `/` | Hero, category tiles, product carousels |
+| `/` | Coupons, teaser carousel, category tiles, "Jetzt extra sparen", topseller row |
 | `/kategorie/[slug]` | Listing with filter chips, sorting, pagination (state lives in the URL) |
 | `/suche?q=` | Search results (header search with live suggestions) |
 | `/p/[id]` | Product page: gallery, buy box, tabs, related products |
