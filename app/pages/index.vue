@@ -1,115 +1,132 @@
 <script setup lang="ts">
-const [{ data: sale }, { data: tech }, { data: fashion }] = await Promise.all([
-  useFetch('/api/products', { query: { category: 'sale', sort: 'discount', pageSize: 8 }, key: 'home-sale' }),
-  useFetch('/api/products', { query: { category: 'technik', sort: 'rating', pageSize: 8 }, key: 'home-tech' }),
-  useFetch('/api/products', { query: { category: 'damen', sort: 'rating', pageSize: 8 }, key: 'home-fashion' }),
-])
+const { data } = await useFetch('/api/home')
 
-const tiles = shopCategories.filter(c => c.slug !== 'sale')
+const coupons = [
+  { amount: '10 €', kicker: 'Nur für Neukund*innen', title: 'Gutschein für deine erste Bestellung', validUntil: 'morgen 23:59 Uhr' },
+  { amount: '20%', extra: true, title: 'Auf ausgewählte Damen-Mode & Taschen', validUntil: 'Fr., 06.11.' },
+  { amount: '15%', extra: true, title: 'Auf ausgew. Laptops & Smartphones', validUntil: 'Fr., 06.11.' },
+  { amount: '10%', extra: true, title: 'Auf Möbel & Küche', validUntil: 'So., 08.11.' },
+]
 </script>
 
 <template>
-  <div class="container">
-    <section class="hero">
-      <div class="hero__copy">
-        <p class="hero__kicker">Nur für kurze Zeit</p>
-        <h1 class="hero__title">Bis zu 50 % auf Technik, Mode & Wohnen</h1>
-        <p class="hero__text">Entdecke tausende reduzierte Artikel – mit kostenloser Rückgabe.</p>
-        <b2b-button variant="secondary" href="/kategorie/sale">Zum Sale</b2b-button>
-      </div>
-      <div class="hero__image" aria-hidden="true">
-        <img v-for="p in sale?.items.slice(0, 3)" :key="p.id" :src="p.thumbnail" alt="">
-      </div>
-    </section>
+  <div v-if="data" class="container home">
+    <HScroller item-width="346px" gap="16px" class="section">
+      <CouponCard v-for="c in coupons" :key="c.title" v-bind="c" />
+    </HScroller>
+
+    <HScroller item-width="296px" gap="16px" class="section">
+      <NuxtLink v-for="t in data.teasers" :key="t.title" :to="t.to" class="teaser">
+        <span class="teaser__kicker">{{ t.kicker }}</span>
+        <strong class="teaser__title">{{ t.title }}</strong>
+        <span class="teaser__image"><img :src="t.image" alt="" width="280" height="210"></span>
+      </NuxtLink>
+    </HScroller>
 
     <section class="section">
-      <b2b-headline size="200">Beliebte Kategorien</b2b-headline>
+      <h2 class="h2">Beliebte Kategorien</h2>
       <ul class="tiles">
-        <li v-for="cat in tiles" :key="cat.slug">
-          <NuxtLink :to="`/kategorie/${cat.slug}`" class="tile">
-            <span class="tile__icon">
-              <b2b-icon-100 :icon="cat.icon" :size="40" />
-            </span>
-            <span>{{ cat.label }}</span>
+        <li v-for="tile in data.tiles" :key="tile.title">
+          <NuxtLink :to="tile.to" class="tile">
+            <strong>{{ tile.title }}</strong>
+            <img :src="tile.image" alt="" width="160" height="160">
           </NuxtLink>
         </li>
       </ul>
     </section>
 
-    <ProductRow v-if="sale" title="Sale-Highlights" :products="sale.items" more-link="/kategorie/sale" />
+    <NuxtLink to="/kategorie/sale" class="up-banner">
+      <span class="up-banner__logo">UP</span>
+      <strong>Sichere dir GRATIS Versand und sammle Punkte!</strong>
+      <span>Jetzt kostenlos Mitglied werden</span>
+    </NuxtLink>
 
-    <section class="promo">
-      <div class="promo__card promo__card--dark">
-        <h2>Neu: Smart Home</h2>
-        <p>Technik, die mitdenkt.</p>
-        <NuxtLink to="/kategorie/technik" class="promo__link">Jetzt entdecken →</NuxtLink>
-      </div>
-      <div class="promo__card promo__card--light">
-        <h2>Wohnträume</h2>
-        <p>Möbel & Deko für jeden Raum.</p>
-        <NuxtLink to="/kategorie/wohnen" class="promo__link">Inspirieren lassen →</NuxtLink>
-      </div>
+    <section class="section">
+      <h2 class="h2">Lass dich inspirieren</h2>
+      <HScroller item-width="296px" gap="16px">
+        <NuxtLink v-for="item in data.inspiration" :key="item.title" :to="item.to" class="teaser teaser--bottom">
+          <span class="teaser__image"><img :src="item.image" alt="" width="280" height="210"></span>
+          <strong class="teaser__title">{{ item.title }}</strong>
+        </NuxtLink>
+      </HScroller>
     </section>
 
-    <ProductRow v-if="tech" title="Top bewertet in Technik" :products="tech.items" more-link="/kategorie/technik" />
-    <ProductRow v-if="fashion" title="Damenmode, die begeistert" :products="fashion.items" more-link="/kategorie/damen" />
+    <section class="section extra">
+      <h2 class="extra__title">Jetzt extra sparen</h2>
+      <NuxtLink to="/kategorie/moebel" class="extra__banner">
+        <span class="teaser__kicker">Bis 10.11. vom Verkäufer OTTO</span>
+        <strong class="teaser__title">Living Angebote</strong>
+        <span class="extra__stage">
+          <span class="extra__bubble"><span>Living</span><b>Outlet</b></span>
+          <img v-for="src in data.extraBanner" :key="src" :src="src" alt="" width="200" height="200">
+        </span>
+      </NuxtLink>
+      <ProductRow :products="data.extraSale" />
+      <ul class="subtiles">
+        <li v-for="s in data.subTiles" :key="s.title">
+          <NuxtLink :to="s.to" class="subtile">
+            <img :src="s.image" alt="" width="56" height="56">
+            <strong>{{ s.title }}</strong>
+          </NuxtLink>
+        </li>
+      </ul>
+    </section>
+
+    <ProductRow title="Trending Topseller der letzten Tage" :products="data.topseller" more-link="/kategorie/sale" />
   </div>
 </template>
 
 <style scoped>
-.hero {
-  margin-top: 24px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 24px;
-  padding: 40px;
-  background: var(--otto-red);
-  color: #fff;
+.home {
+  padding-top: 16px;
+}
+
+.teaser {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8px;
+  background: #fff;
+  border-radius: var(--otto-radius);
+}
+
+.teaser__kicker {
+  padding: 16px 8px 0;
+  font-size: 14px;
+}
+
+.teaser__title {
+  padding: 2px 8px 16px;
+  font-size: 16px;
+}
+
+.teaser__image {
+  margin-top: auto;
+  aspect-ratio: 4 / 3;
+  background: var(--otto-image-bg);
+  border-radius: 4px;
   overflow: hidden;
 }
 
-.hero__kicker {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.hero__title {
-  margin: 0 0 12px;
-  font-size: clamp(28px, 4vw, 44px);
-  line-height: 1.1;
-}
-
-.hero__text {
-  margin: 0 0 24px;
-  font-size: 18px;
-}
-
-.hero__image {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.hero__image img {
-  aspect-ratio: 3 / 4;
+.teaser__image img {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  background: #fff;
-  border-radius: 4px;
   padding: 8px;
 }
 
-.hero__image img:nth-child(2) {
-  transform: translateY(-16px);
+.teaser--bottom .teaser__title {
+  padding: 16px 8px 8px;
+}
+
+.teaser:hover .teaser__title {
+  text-decoration: underline;
 }
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
   list-style: none;
   padding: 0;
   margin: 0;
@@ -118,75 +135,166 @@ const tiles = shopCategories.filter(c => c.slug !== 'sale')
 .tile {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  text-align: center;
+  height: 100%;
+  padding: 8px;
+  background: #fff;
+  border-radius: var(--otto-radius);
+  font-size: 13px;
+}
+
+.tile img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  margin-top: 8px;
+}
+
+.tile:hover strong {
+  text-decoration: underline;
+}
+
+.up-banner {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 22px 20px;
+  background: var(--otto-red-dark);
+  color: #fff;
+  border-radius: var(--otto-radius);
   font-size: 14px;
 }
 
-.tile:hover span {
-  text-decoration: underline;
+.up-banner strong {
+  font-size: 20px;
 }
 
-.tile__icon {
-  display: grid;
-  place-items: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: var(--otto-bg);
-  transition: background 0.15s;
+.up-banner__logo {
+  padding: 0 6px;
+  border: 2px solid #fff;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 18px;
 }
 
-.tile:hover .tile__icon {
-  background: var(--otto-line);
+.extra {
+  padding: 24px 16px;
+  background: var(--otto-beige);
 }
 
-.promo {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+.extra__title {
+  margin: 0 0 16px;
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--otto-red-dark);
 }
 
-.promo__card {
-  padding: 32px;
-  min-height: 180px;
+.extra__banner {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  padding: 8px;
+  background: #fff;
+  border-radius: var(--otto-radius);
 }
 
-.promo__card h2 {
-  margin: 0 0 4px;
-  font-size: 26px;
+.extra__stage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 24px;
+  height: 320px;
+  padding: 24px;
+  background: linear-gradient(#f3f3f3, #e6e6e6);
+  border-radius: 4px;
 }
 
-.promo__card p {
-  margin: 0 0 12px;
+.extra__stage img {
+  height: 85%;
+  width: auto;
+  object-fit: contain;
 }
 
-.promo__card--dark {
-  background: var(--otto-ink);
-  color: #fff;
+.extra__bubble {
+  position: absolute;
+  left: 25%;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: var(--otto-beige);
+  color: var(--otto-red-dark);
+  text-align: center;
+  font-size: 30px;
+  line-height: 1.05;
 }
 
-.promo__card--light {
-  background: #f3e9dc;
+.subtiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.promo__link {
-  font-weight: 700;
+.subtile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 80px;
+  padding: 8px 16px 8px 8px;
+  background: #fff;
+  border-radius: var(--otto-radius);
+  font-size: 14px;
+}
+
+.subtile img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.subtile:hover strong {
   text-decoration: underline;
 }
 
-@media (max-width: 760px) {
-  .hero,
-  .promo {
-    grid-template-columns: 1fr;
+@media (max-width: 900px) {
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .hero {
-    padding: 24px;
+  .subtiles {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .extra__title {
+    font-size: 28px;
+  }
+
+  .extra__stage {
+    height: 200px;
+  }
+
+  .extra__bubble {
+    width: 96px;
+    height: 96px;
+    font-size: 18px;
+    left: 8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .subtiles {
+    grid-template-columns: 1fr;
   }
 }
 </style>

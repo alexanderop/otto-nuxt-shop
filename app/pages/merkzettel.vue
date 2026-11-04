@@ -9,7 +9,7 @@ useHead({ title: 'Merkzettel | OTTO Demo' })
 
 <template>
   <div class="container page">
-    <b2b-headline size="400">Merkzettel</b2b-headline>
+    <h1 class="page-title">Merkzettel</h1>
 
     <ul v-if="saved.length" class="product-grid list">
       <li v-for="product in saved" :key="product.id">
@@ -18,7 +18,7 @@ useHead({ title: 'Merkzettel | OTTO Demo' })
     </ul>
 
     <b2b-background-box v-else class="empty">
-      <b2b-headline size="100">Noch nichts gemerkt</b2b-headline>
+      <h2 class="h2">Noch nichts gemerkt</h2>
       <b2b-paragraph>Tippe auf das Herz bei einem Artikel, um ihn hier zu speichern.</b2b-paragraph>
     </b2b-background-box>
   </div>

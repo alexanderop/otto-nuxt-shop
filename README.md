@@ -21,8 +21,28 @@ pnpm dev        # http://localhost:3000
 | `/merkzettel` | Wishlist |
 
 Data: `server/data/products.json` (snapshot of dummyjson.com), served by
-`server/api/products`. Product images and the design system's icons and fonts
-load from remote CDNs, so the demo needs internet.
+`server/api/products`; the homepage content comes from `server/api/home`.
+Product images are stored in `public/products/` (30 MB), because dummyjson's CDN
+stalls when a page requests a few hundred images at once. The design system's
+icons and the OttoSans font still load from OTTO's CDN, so the demo needs internet.
+
+## How it compares to otto.de
+
+The layout follows the real homepage: grey `#f0f0f0` page with white rounded
+cards, a pill-shaped search, two-row category nav, coupon cards, teaser and
+product carousels, and the beige "Jetzt extra sparen" block. The look is
+OTTO's B2C shop, but the component library is the **B2B** one, so a few
+pieces are custom on purpose:
+
+| Piece | Built with | Why |
+| --- | --- | --- |
+| Search | Custom `SearchBox.vue` | `b2b-search` is a square input with a red button; otto.de uses a grey pill |
+| Product cards | Plain markup | `b2b-card` adds a border and shadow that otto.de doesn't have |
+| Headings | Native `h1`/`h2` | `b2b-headline` renders red at size 400 |
+| Buttons, chips, dropdown, pagination, breadcrumb, tabs, snackbar, icons, progress bar | `b2b-*` components | Close enough to the B2C look |
+
+Only the homepage could be compared automatically: otto.de's category, search
+and product pages are protected by Kasada and render blank in headless browsers.
 
 ## Wiring the design system into Nuxt
 

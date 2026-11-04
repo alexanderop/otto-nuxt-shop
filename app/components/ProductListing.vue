@@ -71,12 +71,12 @@ function onPage(event: CustomEvent<{ currentPage: number }>) {
 
     <ul v-else-if="data?.items.length" class="product-grid list" :class="{ 'list--pending': status === 'pending' }">
       <li v-for="product in data.items" :key="product.id">
-        <ProductCard :product="product" />
+        <ProductCard :product="product" show-rating />
       </li>
     </ul>
 
     <b2b-background-box v-else class="empty">
-      <b2b-headline size="100">Keine Treffer</b2b-headline>
+      <h2 class="h2">Keine Treffer</h2>
       <b2b-paragraph>Versuch es mit weniger Filtern oder einem anderen Suchbegriff.</b2b-paragraph>
     </b2b-background-box>
 

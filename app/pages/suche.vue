@@ -8,7 +8,7 @@ useHead({ title: () => `Suche: ${term.value} | OTTO Demo` })
 <template>
   <div class="container page">
     <AppBreadcrumb :items="[{ label: 'Startseite', to: '/' }, { label: 'Suche', to: route.fullPath }]" />
-    <b2b-headline size="400">Ergebnisse für „{{ term }}“</b2b-headline>
+    <h1 class="page-title">Ergebnisse für „{{ term }}“</h1>
     <ProductListing :key="term" :q="term" />
   </div>
 </template>

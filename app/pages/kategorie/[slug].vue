@@ -12,7 +12,7 @@ useHead({ title: () => `${category.value?.label} online kaufen | OTTO Demo` })
 <template>
   <div v-if="category" class="container page">
     <AppBreadcrumb :items="[{ label: 'Startseite', to: '/' }, { label: category.label, to: route.path }]" />
-    <b2b-headline size="400">{{ category.label }}</b2b-headline>
+    <h1 class="page-title">{{ category.label }}</h1>
     <ProductListing :key="category.slug" :category="category.slug" />
   </div>
 </template>

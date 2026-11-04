@@ -23,15 +23,22 @@ export interface ShopCategory {
 export const SALE_THRESHOLD = 15
 
 export const shopCategories: ShopCategory[] = [
-  { slug: 'sale', label: 'Sale', icon: 'b2b_icon-sale', sources: [] },
-  { slug: 'damen', label: 'Damen', icon: 'b2b_icon-dress', sources: ['womens-dresses', 'womens-shoes', 'womens-bags', 'womens-jewellery', 'womens-watches', 'tops'] },
-  { slug: 'herren', label: 'Herren', icon: 'b2b_icon-shirt', sources: ['mens-shirts', 'mens-shoes', 'mens-watches', 'sunglasses'] },
-  { slug: 'technik', label: 'Technik', icon: 'b2b_icon-tv', sources: ['smartphones', 'laptops', 'tablets', 'mobile-accessories'] },
-  { slug: 'wohnen', label: 'Möbel & Wohnen', icon: 'b2b_icon-armchair', sources: ['furniture', 'home-decoration', 'kitchen-accessories'] },
-  { slug: 'beauty', label: 'Beauty', icon: 'b2b_icon-cosmetics', sources: ['beauty', 'fragrances', 'skin-care'] },
+  { slug: 'damen-mode', label: 'Damen-Mode', icon: 'b2b_icon-dress', sources: ['womens-dresses', 'womens-shoes', 'womens-bags', 'tops'] },
+  { slug: 'herren-mode', label: 'Herren-Mode', icon: 'b2b_icon-shirt', sources: ['mens-shirts', 'mens-shoes'] },
+  { slug: 'schmuck-uhren', label: 'Schmuck & Uhren', icon: 'b2b_icon-diamond-circle', sources: ['womens-jewellery', 'womens-watches', 'mens-watches', 'sunglasses'] },
   { slug: 'sport', label: 'Sport', icon: 'b2b_icon-basketball', sources: ['sports-accessories'] },
+  { slug: 'beauty', label: 'Beauty & Drogerie', icon: 'b2b_icon-cosmetics', sources: ['beauty', 'fragrances', 'skin-care'] },
   { slug: 'lebensmittel', label: 'Lebensmittel', icon: 'b2b_icon-basket', sources: ['groceries'] },
+  { slug: 'multimedia', label: 'Multimedia', icon: 'b2b_icon-tv', sources: ['smartphones', 'laptops', 'tablets', 'mobile-accessories'] },
+  { slug: 'kueche', label: 'Küche', icon: 'b2b_icon-armchair', sources: ['kitchen-accessories'] },
+  { slug: 'deko', label: 'Wohnaccessoires', icon: 'b2b_icon-armchair', sources: ['home-decoration'] },
+  { slug: 'moebel', label: 'Möbel', icon: 'b2b_icon-armchair', sources: ['furniture'] },
+  { slug: 'sale', label: 'Sale', icon: 'b2b_icon-sale', sources: [] },
 ]
+
+export function categoryOf(product: Pick<Product, 'category'>) {
+  return shopCategories.find(c => c.sources.includes(product.category))
+}
 
 export function findCategory(slug: string) {
   return shopCategories.find(c => c.slug === slug)

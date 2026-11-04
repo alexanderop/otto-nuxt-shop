@@ -8,51 +8,50 @@ const original = computed(() => formatEuro(props.product.price))
 
 <template>
   <div class="price" :class="{ 'price--large': large }">
-    <template v-if="sale">
-      <span class="price__current price__current--sale">{{ current }}</span>
-      <span class="price__original"><s>{{ original }}</s></span>
+    <span class="price__current" :class="{ 'price__current--sale': sale }">{{ sale ? current : original }}</span>
+    <span v-if="sale" class="price__was">
       <span class="price__badge">-{{ Math.round(product.discountPercentage) }}%</span>
-    </template>
-    <span v-else class="price__current">{{ original }}</span>
+      UVP <s>{{ original }}</s>
+    </span>
   </div>
 </template>
 
 <style scoped>
 .price {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 8px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .price__current {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .price__current--sale {
-  color: var(--otto-red);
+  color: var(--otto-red-dark);
 }
 
-.price__original {
-  font-size: 13px;
-  color: var(--otto-muted);
+.price__was {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
 }
 
 .price__badge {
-  font-size: 12px;
-  font-weight: 700;
+  padding: 1px 4px;
+  background: var(--otto-red-dark);
   color: #fff;
-  background: var(--otto-red);
-  padding: 1px 6px;
-  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .price--large .price__current {
   font-size: 32px;
 }
 
-.price--large .price__original {
-  font-size: 16px;
+.price--large .price__was {
+  font-size: 14px;
 }
 </style>

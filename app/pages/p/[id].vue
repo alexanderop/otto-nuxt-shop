@@ -7,7 +7,7 @@ if (!data.value) {
 }
 
 const product = computed(() => data.value!.product)
-const shopCategory = computed(() => shopCategories.find(c => c.sources.includes(product.value.category)))
+const shopCategory = computed(() => categoryOf(product.value))
 const activeImage = ref(0)
 watch(() => route.params.id, () => (activeImage.value = 0))
 
@@ -34,7 +34,7 @@ useHead({ title: () => `${product.value.title} | OTTO Demo` })
   <div class="container page">
     <AppBreadcrumb :items="breadcrumb" />
 
-    <div class="pdp">
+    <div class="pdp panel">
       <div class="gallery">
         <ul class="gallery__thumbs">
           <li v-for="(img, i) in product.images" :key="img">
@@ -56,7 +56,7 @@ useHead({ title: () => `${product.value.title} | OTTO Demo` })
 
       <div class="buybox">
         <span v-if="product.brand" class="buybox__brand">{{ product.brand }}</span>
-        <b2b-headline size="200" no-margin>{{ product.title }}</b2b-headline>
+        <h2 class="h2">{{ product.title }}</h2>
         <RatingStars :rating="product.rating" :count="product.reviewCount" />
 
         <ProductPrice :product="product" large />
@@ -87,7 +87,7 @@ useHead({ title: () => `${product.value.title} | OTTO Demo` })
       </div>
     </div>
 
-    <section class="section">
+    <section class="section panel">
       <b2b-tab-group>
         <b2b-tab slot="tab" selected>Beschreibung</b2b-tab>
         <b2b-tab-panel slot="panel">
@@ -146,7 +146,7 @@ useHead({ title: () => `${product.value.title} | OTTO Demo` })
 .gallery__thumb {
   padding: 0;
   border: 2px solid transparent;
-  background: var(--otto-bg);
+  background: var(--otto-image-bg);
   cursor: pointer;
 }
 
@@ -162,7 +162,7 @@ useHead({ title: () => `${product.value.title} | OTTO Demo` })
 }
 
 .gallery__main {
-  background: var(--otto-bg);
+  background: var(--otto-image-bg);
   aspect-ratio: 1;
   display: grid;
   place-items: center;

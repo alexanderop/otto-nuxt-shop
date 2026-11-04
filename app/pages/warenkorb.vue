@@ -11,16 +11,16 @@ useHead({ title: 'Warenkorb | OTTO Demo' })
 
 <template>
   <div class="container page">
-    <b2b-headline size="400">Warenkorb</b2b-headline>
+    <h1 class="page-title">Warenkorb</h1>
 
     <b2b-background-box v-if="!cart.lines.value.length" class="empty">
-      <b2b-headline size="100">Dein Warenkorb ist leer</b2b-headline>
+      <h2 class="h2">Dein Warenkorb ist leer</h2>
       <b2b-paragraph>Stöbere in unseren Kategorien und finde etwas Schönes.</b2b-paragraph>
       <b2b-button variant="primary" href="/">Weiter einkaufen</b2b-button>
     </b2b-background-box>
 
     <div v-else class="cart">
-      <ul class="lines">
+      <ul class="lines panel">
         <li v-for="line in cart.lines.value" :key="line.id" class="line">
           <NuxtLink :to="`/p/${line.id}`" class="line__image">
             <img :src="line.thumbnail" :alt="line.title" width="120" height="120">
@@ -42,7 +42,7 @@ useHead({ title: 'Warenkorb | OTTO Demo' })
       </ul>
 
       <b2b-background-box class="summary">
-        <b2b-headline size="100">Zusammenfassung</b2b-headline>
+        <h2 class="h2">Zusammenfassung</h2>
         <dl class="summary__rows">
           <dt>Zwischensumme</dt><dd>{{ formatEuro(cart.total.value) }}</dd>
           <dt>Versand</dt><dd>{{ shipping ? formatEuro(shipping) : 'kostenlos' }}</dd>
@@ -83,6 +83,10 @@ useHead({ title: 'Warenkorb | OTTO Demo' })
   margin: 0;
 }
 
+.line:last-child {
+  border-bottom: 0;
+}
+
 .line {
   display: grid;
   grid-template-columns: 120px minmax(0, 1fr) auto;
@@ -92,7 +96,7 @@ useHead({ title: 'Warenkorb | OTTO Demo' })
 }
 
 .line__image {
-  background: var(--otto-bg);
+  background: var(--otto-image-bg);
 }
 
 .line__image img {

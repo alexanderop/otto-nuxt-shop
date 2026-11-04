@@ -1,46 +1,39 @@
 <script setup lang="ts">
-const props = defineProps<{ product: Product }>()
+const props = defineProps<{ product: Product, showRating?: boolean }>()
 
 const wishlist = useWishlist()
 const saved = computed(() => wishlist.has(props.product.id))
+const popular = computed(() => props.product.rating >= 4.5)
 </script>
 
 <template>
-  <b2b-card class="card">
-    <div class="card__inner">
-      <button
-        class="card__wish"
-        type="button"
-        :aria-pressed="saved"
-        :aria-label="saved ? 'Vom Merkzettel entfernen' : 'Auf den Merkzettel'"
-        @click="wishlist.toggle(product.id)"
-      >
-        <b2b-icon-100 :icon="saved ? 'b2b_icon-wishlist-active' : 'b2b_icon-wishlist'" :size="24" />
-      </button>
+  <article class="card">
+    <NuxtLink :to="`/p/${product.id}`" class="card__link">
+      <div class="card__image">
+        <img :src="product.thumbnail" :alt="product.title" loading="lazy" width="300" height="400">
+        <span v-if="popular" class="card__flag">Sehr beliebt</span>
+      </div>
+      <span class="card__brand">{{ product.brand ?? 'OTTO' }}</span>
+      <h3 class="card__title">{{ product.title }}</h3>
+      <ProductPrice :product="product" />
+      <RatingStars v-if="showRating" :rating="product.rating" :count="product.reviewCount" />
+      <span v-if="product.stock === 0" class="card__soldout">Leider ausverkauft</span>
+    </NuxtLink>
 
-      <NuxtLink :to="`/p/${product.id}`" class="card__link">
-        <div class="card__image">
-          <img :src="product.thumbnail" :alt="product.title" loading="lazy" width="300" height="300">
-        </div>
-        <span v-if="product.brand" class="card__brand">{{ product.brand }}</span>
-        <h3 class="card__title">{{ product.title }}</h3>
-        <ProductPrice :product="product" />
-        <RatingStars :rating="product.rating" :count="product.reviewCount" />
-        <span class="card__delivery" :class="{ 'card__delivery--low': product.stock <= 10 }">
-          {{ stockText(product.stock) }}
-        </span>
-      </NuxtLink>
-    </div>
-  </b2b-card>
+    <button
+      class="card__wish"
+      type="button"
+      :aria-pressed="saved"
+      :aria-label="saved ? 'Vom Merkzettel entfernen' : 'Auf den Merkzettel'"
+      @click="wishlist.toggle(product.id)"
+    >
+      <b2b-icon-100 :icon="saved ? 'b2b_icon-wishlist-active' : 'b2b_icon-wishlist'" :size="24" />
+    </button>
+  </article>
 </template>
 
 <style scoped>
 .card {
-  display: block;
-  height: 100%;
-}
-
-.card__inner {
   position: relative;
   height: 100%;
 }
@@ -48,70 +41,76 @@ const saved = computed(() => wishlist.has(props.product.id))
 .card__link {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   height: 100%;
 }
 
 .card__image {
-  aspect-ratio: 1;
-  background: var(--otto-bg);
-  display: grid;
-  place-items: center;
-  margin-bottom: 6px;
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: #fff;
+  border-radius: var(--otto-radius);
+  overflow: hidden;
+  margin-bottom: 12px;
 }
 
 .card__image img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  mix-blend-mode: multiply;
+  padding: 12px;
+}
+
+.card__flag {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 2px 6px;
+  background: var(--otto-ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .card__brand {
   font-size: 12px;
-  font-weight: 700;
   text-transform: uppercase;
-  color: var(--otto-muted);
 }
 
 .card__title {
+  margin: 2px 0 8px;
   font-size: 14px;
   font-weight: 400;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card__link:hover .card__title {
   text-decoration: underline;
 }
 
-.card__delivery {
-  margin-top: auto;
+.card__soldout {
+  margin-top: 4px;
   font-size: 12px;
-  color: var(--otto-green);
-}
-
-.card__delivery--low {
   color: var(--otto-red);
 }
 
 .card__wish {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 2;
+  top: 8px;
+  right: 8px;
   display: grid;
   place-items: center;
   width: 36px;
   height: 36px;
   border: 0;
   border-radius: 50%;
-  background: #fff;
-  color: var(--otto-red);
+  background: rgb(255 255 255 / 0.85);
+  color: var(--otto-ink);
   cursor: pointer;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+}
+
+.card__wish[aria-pressed='true'] {
+  color: var(--otto-red);
 }
 </style>

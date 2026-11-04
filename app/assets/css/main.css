@@ -1,12 +1,16 @@
 :root {
-  --otto-red: #f00020;
-  --otto-red-dark: #c4001a;
-  --otto-ink: #222;
-  --otto-muted: #777;
+  --otto-red: #eb001f;
+  --otto-red-dark: #dc001d;
+  --otto-ink: #212121;
+  --otto-muted: #6b6b6b;
   --otto-line: #e6e6e6;
-  --otto-bg: #f6f6f6;
+  --otto-bg: #f0f0f0;
+  --otto-image-bg: #f6f6f6;
+  --otto-beige: #f5e6d7;
+  --otto-peach: #fdc8a8;
   --otto-green: #08872b;
-  --otto-max: 1280px;
+  --otto-radius: 8px;
+  --otto-max: 1152px;
   --otto-gutter: 16px;
 }
 
@@ -24,7 +28,7 @@ body {
   margin: 0;
   font-family: OttoSans, Arial, Helvetica, sans-serif;
   color: var(--otto-ink);
-  background: #fff;
+  background: var(--otto-bg);
   line-height: 1.4;
 }
 
@@ -45,7 +49,27 @@ img {
 }
 
 .section {
-  margin-block: 40px;
+  margin-block: 32px;
+}
+
+.page-title {
+  margin: 8px 0 16px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.panel {
+  background: #fff;
+  border-radius: var(--otto-radius);
+  padding: 24px;
 }
 
 .section__head {
@@ -53,7 +77,6 @@ img {
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
 }
 
 .section__link {
@@ -65,7 +88,7 @@ img {
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 24px 16px;
 }
 
 .visually-hidden {
@@ -78,9 +101,7 @@ img {
 }
 
 /* Avoid a flash of raw content before Stencil upgrades the custom elements */
-b2b-card:not(.hydrated),
 b2b-button:not(.hydrated),
-b2b-search:not(.hydrated),
 b2b-dropdown:not(.hydrated),
 b2b-pagination:not(.hydrated) {
   visibility: hidden;

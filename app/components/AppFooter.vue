@@ -53,7 +53,7 @@ const columns = [
 <style scoped>
 .footer {
   margin-top: 64px;
-  background: var(--otto-bg);
+  background: #fff;
   font-size: 14px;
 }
 
