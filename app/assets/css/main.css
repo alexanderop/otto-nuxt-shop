@@ -1,0 +1,94 @@
+:root {
+  --otto-red: #f00020;
+  --otto-red-dark: #c4001a;
+  --otto-ink: #222;
+  --otto-muted: #777;
+  --otto-line: #e6e6e6;
+  --otto-bg: #f6f6f6;
+  --otto-green: #08872b;
+  --otto-max: 1280px;
+  --otto-gutter: 16px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: OttoSans, Arial, Helvetica, sans-serif;
+  color: var(--otto-ink);
+  background: #fff;
+  line-height: 1.4;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+.container {
+  max-width: var(--otto-max);
+  margin-inline: auto;
+  padding-inline: var(--otto-gutter);
+}
+
+.section {
+  margin-block: 40px;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.section__link {
+  font-size: 14px;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Avoid a flash of raw content before Stencil upgrades the custom elements */
+b2b-card:not(.hydrated),
+b2b-button:not(.hydrated),
+b2b-search:not(.hydrated),
+b2b-dropdown:not(.hydrated),
+b2b-pagination:not(.hydrated) {
+  visibility: hidden;
+}
+
+@media (max-width: 600px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
