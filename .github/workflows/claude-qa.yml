@@ -48,33 +48,23 @@ jobs:
       - name: Start shop (verify-otto-shop skill)
         run: .claude/skills/verify-otto-shop/scripts/otto-verify.sh launch
 
-      - name: Claude QA
+      - name: Claude QA (live)
         id: qa
-        uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
         env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        with:
-          # Claude-Code-Subscription statt API-Key: Token mit `claude setup-token` erzeugen
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
-          prompt: |
-            Du bist der QA-Agent für PR #${{ github.event.pull_request.number }}. Ändere keinen Code.
-
-            1. Finde das verlinkte Issue mit
-               `gh pr view "$PR_NUMBER" --json closingIssuesReferences`.
-               Lies es mit `gh issue view <nummer>`. Das Issue ist das Ticket mit den Akzeptanzkriterien.
-            2. Der Shop läuft schon auf http://localhost:3100. Prüfe jedes Gherkin-Szenario
-               aus dem Issue mit dem Skill verify-otto-shop im echten Browser.
-            3. Teste danach explorativ rund um das Feature: Dinge, die nicht im Ticket stehen.
-            4. Lege Screenshots und das Video unter qa-report/ ab.
-            5. Poste den Report als Kommentar mit `gh pr comment "$PR_NUMBER" --body-file qa-report/report.md`:
-               Urteil, Tabelle der Szenarien, Funde mit Severity, Repro-Schritten, Erwartet vs. Ist.
-          claude_args: |
-            --model opus
-            --max-turns 60
-            --allowedTools "Skill,Read,Write,Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh pr comment:*),Bash(mkdir:*),Bash(cp:*)"
-            --json-schema '{"type":"object","required":["verdict","summary"],"properties":{"verdict":{"type":"string","enum":["HEALTHY","MINOR_ISSUES","CRITICAL_BUGS"]},"summary":{"type":"string"}}}'
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -o pipefail
+          ./node_modules/.bin/claude -p "$(envsubst < .github/prompts/qa.md)" \
+            --model opus \
+            --max-budget-usd 10 \
+            --max-turns 300 \
+            --allowedTools "Skill,Read,Write,Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh pr comment:*),Bash(mkdir:*),Bash(cp:*),Bash(ls:*)" \
+            --json-schema "$(cat .github/prompts/qa-verdict.schema.json)" \
+            --output-format stream-json --verbose < /dev/null \
+            | node .github/scripts/claude-live-log.mjs
 
       - name: Upload evidence
         if: always()
@@ -88,9 +78,9 @@ jobs:
 
       - name: Merge gate
         env:
-          VERDICT: ${{ fromJSON(steps.qa.outputs.structured_output).verdict }}
+          VERDICT: ${{ steps.qa.outputs.verdict }}
         run: |
-          echo "Urteil: $VERDICT"
-          if [ "$VERDICT" = "CRITICAL_BUGS" ]; then
+          echo "Urteil: ${VERDICT:-keins}"
+          if [ -z "$VERDICT" ] || [ "$VERDICT" = "CRITICAL_BUGS" ]; then
             exit 1
           fi
