@@ -1,0 +1,93 @@
+# Claude QA: Setzt jemand das Label `qa-verify` auf einen PR, prüft Claude Code
+# das verlinkte Ticket im echten Browser und kommentiert den Report im PR.
+name: Claude QA
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions: {}
+
+concurrency:
+  group: claude-qa-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    name: QA im Browser
+    if: github.event.label.name == 'qa-verify'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write # Claude postet den QA-Report als PR-Kommentar
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Agent Browser (aus dem Lockfile)
+        run: |
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+          ./node_modules/.bin/agent-browser install --with-deps
+
+      - name: Start shop (verify-otto-shop skill)
+        run: .claude/skills/verify-otto-shop/scripts/otto-verify.sh launch
+
+      - name: Claude QA
+        id: qa
+        uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe # v1.0.269
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Du bist der QA-Agent für PR #${{ github.event.pull_request.number }}. Ändere keinen Code.
+
+            1. Lies die PR-Beschreibung mit `gh pr view "$PR_NUMBER" --json title,body`.
+               Sie nennt eine Ticket-ID (z. B. SHOP-42). Lies das Ticket unter docs/tickets/.
+            2. Der Shop läuft schon auf http://localhost:3100. Prüfe jedes Gherkin-Szenario
+               aus dem Ticket mit dem Skill verify-otto-shop im echten Browser.
+            3. Teste danach explorativ rund um das Feature: Dinge, die nicht im Ticket stehen.
+            4. Lege Screenshots und das Video unter qa-report/ ab.
+            5. Poste den Report als Kommentar mit `gh pr comment "$PR_NUMBER" --body-file qa-report/report.md`:
+               Urteil, Tabelle der Szenarien, Funde mit Severity, Repro-Schritten, Erwartet vs. Ist.
+          claude_args: |
+            --model opus
+            --max-turns 60
+            --allowedTools "Skill,Read,Write,Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(mkdir:*),Bash(cp:*)"
+            --json-schema '{"type":"object","required":["verdict","summary"],"properties":{"verdict":{"type":"string","enum":["HEALTHY","MINOR_ISSUES","CRITICAL_BUGS"]},"summary":{"type":"string"}}}'
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: qa-report-pr-${{ github.event.pull_request.number }}
+          path: |
+            qa-report/
+            .data/verify/evidence/
+          if-no-files-found: ignore
+
+      - name: Merge gate
+        env:
+          VERDICT: ${{ fromJSON(steps.qa.outputs.structured_output).verdict }}
+        run: |
+          echo "Urteil: $VERDICT"
+          if [ "$VERDICT" = "CRITICAL_BUGS" ]; then
+            exit 1
+          fi
