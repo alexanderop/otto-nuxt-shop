@@ -1,5 +1,5 @@
 # Claude QA: Setzt jemand das Label `qa-verify` auf einen PR, prüft Claude Code
-# das verlinkte Ticket im echten Browser und kommentiert den Report im PR.
+# das verlinkte GitHub-Issue (das Ticket) im echten Browser und kommentiert den Report im PR.
 name: Claude QA
 
 on:
@@ -21,6 +21,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # Claude postet den QA-Report als PR-Kommentar
+      issues: read # Claude liest das verlinkte Issue (Ticket mit Akzeptanzkriterien)
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,10 +61,11 @@ jobs:
           prompt: |
             Du bist der QA-Agent für PR #${{ github.event.pull_request.number }}. Ändere keinen Code.
 
-            1. Lies die PR-Beschreibung mit `gh pr view "$PR_NUMBER" --json title,body`.
-               Sie nennt eine Ticket-ID (z. B. SHOP-42). Lies das Ticket unter docs/tickets/.
+            1. Finde das verlinkte Issue mit
+               `gh pr view "$PR_NUMBER" --json closingIssuesReferences`.
+               Lies es mit `gh issue view <nummer>`. Das Issue ist das Ticket mit den Akzeptanzkriterien.
             2. Der Shop läuft schon auf http://localhost:3100. Prüfe jedes Gherkin-Szenario
-               aus dem Ticket mit dem Skill verify-otto-shop im echten Browser.
+               aus dem Issue mit dem Skill verify-otto-shop im echten Browser.
             3. Teste danach explorativ rund um das Feature: Dinge, die nicht im Ticket stehen.
             4. Lege Screenshots und das Video unter qa-report/ ab.
             5. Poste den Report als Kommentar mit `gh pr comment "$PR_NUMBER" --body-file qa-report/report.md`:
@@ -71,7 +73,7 @@ jobs:
           claude_args: |
             --model opus
             --max-turns 60
-            --allowedTools "Skill,Read,Write,Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(mkdir:*),Bash(cp:*)"
+            --allowedTools "Skill,Read,Write,Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh pr comment:*),Bash(mkdir:*),Bash(cp:*)"
             --json-schema '{"type":"object","required":["verdict","summary"],"properties":{"verdict":{"type":"string","enum":["HEALTHY","MINOR_ISSUES","CRITICAL_BUGS"]},"summary":{"type":"string"}}}'
 
       - name: Upload evidence
