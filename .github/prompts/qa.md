@@ -9,11 +9,16 @@ Rufe agent-browser immer mit `--session otto-verify-3100` auf. ffmpeg für das V
    mit dem Skill verify-otto-shop im echten Browser.
 3. Teste danach explorativ rund um das Feature, wie ein erfahrener Tester:
    Dinge, die nicht im Issue stehen.
-4. Nimm den Browser-Lauf als Video auf (agent-browser record) und lege Video und Screenshots
-   unter qa-report/ ab.
-5. Schreibe den Report nach qa-report/report.md und poste ihn mit
-   `gh pr comment "$PR_NUMBER" --body-file qa-report/report.md`. Der Report enthält:
-   - als erste Zeile `**Urteil: <HEALTHY | MINOR_ISSUES | CRITICAL_BUGS>**`
-   - eine Tabelle der Szenarien mit Ergebnis
+4. Belege alles mit Screenshots (agent-browser screenshot):
+   - jedes Szenario: ein Screenshot vom Ergebnis
+   - jeder Fund: ein Screenshot vorher und einer nachher, auf dem man den Fehler sieht
+   Lege sie unter qa-report/screenshots/ ab, nummeriert und sprechend benannt
+   (z. B. `03-f1-gesamt-negativ.png`). Nimm den ganzen Browser-Lauf als Video nach
+   qa-report/video/qa-run.webm auf (agent-browser record).
+5. Schreibe den Report nach qa-report/report.md. Poste ihn nicht, das macht der Workflow.
+   - erste Zeile: `**Urteil: <HEALTHY | MINOR_ISSUES | CRITICAL_BUGS>**`
+   - Tabelle der Szenarien mit Ergebnis
    - Funde mit Severity, Repro-Schritten, Erwartet vs. Ist
-   - am Ende den Link zu Video und Screenshots: $RUN_URL (Artefakt qa-report-pr-$PR_NUMBER)
+   - binde jeden Screenshot direkt unter dem passenden Szenario oder Fund ein:
+     `![Kurze Beschreibung](screenshots/<datei>.png)`. Ein Szenario oder Fund ohne Screenshot gilt als nicht belegt.
+   - verlinke das Video als `[Video des Laufs](video/qa-run.webm)`
