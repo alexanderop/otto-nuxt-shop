@@ -17,6 +17,7 @@
     "vue-router": "^5.4.0"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-code": "2.1.319",
     "agent-browser": "0.41.2",
     "typescript": "^6.0.3",
     "vue-tsc": "^3.3.14"

@@ -2,3 +2,4 @@ allowBuilds:
   esbuild: true
   "@parcel/watcher": true
   agent-browser: true
+  "@anthropic-ai/claude-code": true
