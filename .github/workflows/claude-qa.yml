@@ -54,7 +54,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Claude-Code-Subscription statt API-Key: Token mit `claude setup-token` erzeugen
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
           prompt: |
             Du bist der QA-Agent für PR #${{ github.event.pull_request.number }}. Ändere keinen Code.
