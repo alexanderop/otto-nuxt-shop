@@ -44,6 +44,8 @@ jobs:
         run: |
           echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
           ./node_modules/.bin/agent-browser install --with-deps
+          # ffmpeg für `agent-browser record` (Video des QA-Laufs)
+          sudo apt-get install --yes --no-install-recommends ffmpeg
 
       - name: Start shop (verify-otto-shop skill)
         run: .claude/skills/verify-otto-shop/scripts/otto-verify.sh launch
@@ -61,7 +63,7 @@ jobs:
             --model opus \
             --max-budget-usd 10 \
             --max-turns 300 \
-            --allowedTools "Skill,Read,Write,Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh pr comment:*),Bash(mkdir:*),Bash(cp:*),Bash(ls:*)" \
+            --allowedTools "Skill,Read,Write,Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh pr comment:*),Bash(mkdir:*),Bash(cp:*),Bash(ls:*),Bash(cat:*),Bash(grep:*),Bash(head:*),Bash(tail:*),Bash(sort:*),Bash(export:*)" \
             --json-schema "$(cat .github/prompts/qa-verdict.schema.json)" \
             --output-format stream-json --verbose < /dev/null \
             | node .github/scripts/claude-live-log.mjs
