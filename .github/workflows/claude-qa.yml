@@ -29,6 +29,7 @@ jobs:
       issues: read # Claude liest das Issue (Ticket mit Akzeptanzkriterien)
     outputs:
       verdict: ${{ steps.qa.outputs.verdict }}
+      passed: ${{ steps.qa.outputs.passed }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -156,8 +157,9 @@ jobs:
       - name: Merge gate
         env:
           VERDICT: ${{ needs.qa.outputs.verdict }}
+          PASSED: ${{ needs.qa.outputs.passed }}
         run: |
-          echo "Urteil: ${VERDICT:-keins}"
-          if [ -z "$VERDICT" ] || [ "$VERDICT" = "CRITICAL_BUGS" ]; then
+          echo "passed: ${PASSED:-keins} · Urteil: ${VERDICT:-keins}"
+          if [ "$PASSED" != "true" ]; then
             exit 1
           fi

@@ -1,1 +1,1 @@
-{"type":"object","required":["verdict","summary"],"properties":{"verdict":{"type":"string","enum":["HEALTHY","MINOR_ISSUES","CRITICAL_BUGS"]},"summary":{"type":"string"}}}
+{"type": "object", "required": ["passed", "verdict", "summary"], "properties": {"passed": {"type": "boolean", "description": "true nur, wenn alle Szenarien aus dem Issue bestehen und es keinen kritischen Fund gibt"}, "verdict": {"type": "string", "enum": ["HEALTHY", "MINOR_ISSUES", "CRITICAL_BUGS"]}, "summary": {"type": "string"}}}
