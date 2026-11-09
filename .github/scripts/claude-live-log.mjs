@@ -18,7 +18,7 @@ function describeTool(name, input = {}) {
     case 'Read': return ['📖', `Lese ${input.file_path}`]
     case 'Write': return ['📝', `Schreibe ${input.file_path}`]
     case 'Skill': return ['🧩', `Lade Skill ${input.skill}`]
-    case 'StructuredOutput': return ['⚖️', `Urteil: ${input.verdict} · ${short(input.summary, 140)}`]
+    case 'StructuredOutput': return ['⚖️', `passed: ${input.passed} · Urteil: ${input.verdict} · ${short(input.summary, 140)}`]
     default: return ['🛠️', `${name} ${short(JSON.stringify(input), 120)}`]
   }
 }
@@ -58,18 +58,19 @@ for await (const line of createInterface({ input: process.stdin })) {
 }
 
 const verdict = result?.structured_output?.verdict ?? ''
+const passed = result?.structured_output?.passed === true
 const cost = result?.total_cost_usd?.toFixed(2) ?? '?'
 const minutes = result?.duration_ms ? (result.duration_ms / 60000).toFixed(1) : '?'
 
-console.log(`\n=== ${result?.subtype ?? 'kein Ergebnis'} · Urteil: ${verdict || 'keins'} · ${result?.num_turns ?? '?'} Turns · ${cost} $ · ${minutes} Min ===`)
+console.log(`\n=== ${result?.subtype ?? 'kein Ergebnis'} · passed: ${passed} · Urteil: ${verdict || 'keins'} · ${result?.num_turns ?? '?'} Turns · ${cost} $ · ${minutes} Min ===`)
 
 if (process.env.GITHUB_OUTPUT)
-  appendFileSync(process.env.GITHUB_OUTPUT, `verdict=${verdict}\n`)
+  appendFileSync(process.env.GITHUB_OUTPUT, `verdict=${verdict}\npassed=${passed}\n`)
 
 if (process.env.GITHUB_STEP_SUMMARY) {
   const rows = steps.map((s, i) => `| ${i + 1} | ${s.icon} | ${s.text.replaceAll('|', '\\|')} |`).join('\n')
   appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
-    `## Claude QA: ${verdict || 'kein Urteil'}`,
+    `## Claude QA: ${passed ? '✅ passed' : '❌ nicht passed'} · ${verdict || 'kein Urteil'}`,
     '',
     `${result?.num_turns ?? '?'} Turns · ${cost} $ · ${minutes} Min · Ende: \`${result?.subtype ?? 'unbekannt'}\``,
     '',

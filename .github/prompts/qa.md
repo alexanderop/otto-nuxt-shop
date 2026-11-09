@@ -22,3 +22,5 @@ Rufe agent-browser immer mit `--session otto-verify-3100` auf. ffmpeg für das V
    - binde jeden Screenshot direkt unter dem passenden Szenario oder Fund ein:
      `![Kurze Beschreibung](screenshots/<datei>.png)`. Ein Szenario oder Fund ohne Screenshot gilt als nicht belegt.
    - verlinke das Video als `[Video des Laufs](video/qa-run.webm)`
+6. Gib zum Schluss das Urteil als JSON zurück. `passed` ist `true` nur, wenn jedes Szenario
+   aus dem Issue besteht und es keinen kritischen Fund gibt. Sonst `false`.
