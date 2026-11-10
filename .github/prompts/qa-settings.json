@@ -1,6 +1,7 @@
 {
   "sandbox": {
     "enabled": true,
+    "enableWeakerNestedSandbox": true,
     "excludedCommands": [
       "agent-browser",
       "gh",
