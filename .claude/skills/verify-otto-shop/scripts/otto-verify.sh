@@ -3,6 +3,7 @@
 # Usage: otto-verify.sh launch|doctor|wait-ready|proof <name>|stop|status|evidence-dir
 # Env:   OTTO_VERIFY_PORT (default 3100)
 #        OTTO_VERIFY_RUN  (evidence subfolder, default: today's date)
+#        OTTO_VERIFY_MODE (dev = nuxt dev with HMR, default; prod = nuxt build + node server, used by CI)
 #        AGENT_BROWSER_SESSION (default: otto-verify-$OTTO_VERIFY_PORT)
 set -euo pipefail
 
@@ -59,8 +60,15 @@ launch() {
   fi
   mkdir -p "$STATE"
   [[ -d "$REPO/node_modules" ]] || (cd "$REPO" && pnpm install --frozen-lockfile)
-  ( cd "$REPO" && exec ./node_modules/.bin/nuxt dev --port "$PORT" --host localhost --strictPort --no-takeover --no-tui ) \
-    >"$STATE/server.log" 2>&1 &
+  if [[ "${OTTO_VERIFY_MODE:-dev}" == prod ]]; then
+    ( cd "$REPO" && ./node_modules/.bin/nuxt build ) >"$STATE/build.log" 2>&1 \
+      || { echo "build failed:"; tail -30 "$STATE/build.log"; exit 1; }
+    ( cd "$REPO" && PORT="$PORT" HOST=localhost exec node .output/server/index.mjs ) \
+      >"$STATE/server.log" 2>&1 &
+  else
+    ( cd "$REPO" && exec ./node_modules/.bin/nuxt dev --port "$PORT" --host localhost --strictPort --no-takeover --no-tui ) \
+      >"$STATE/server.log" 2>&1 &
+  fi
   echo $! >"$STATE/pid"
   echo "started pid $(cat "$STATE/pid"), log $STATE/server.log"
   for _ in $(seq 1 90); do
