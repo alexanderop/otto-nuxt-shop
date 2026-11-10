@@ -75,12 +75,8 @@ jobs:
         run: |
           echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
           ./node_modules/.bin/agent-browser install --with-deps
-          # ffmpeg für `agent-browser record` (Video des QA-Laufs).
-          # socat + bubblewrap für die Bash-Sandbox von Claude Code: ohne sie
-          # startet mit CLAUDE_CODE_SUBPROCESS_ENV_SCRUB kein einziger Bash-Befehl.
-          sudo apt-get install --yes --no-install-recommends ffmpeg socat bubblewrap
-          # Ubuntu sperrt User-Namespaces per AppArmor, bubblewrap braucht sie.
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          # ffmpeg für `agent-browser record` (Video des QA-Laufs)
+          sudo apt-get install --yes --no-install-recommends ffmpeg
           # apt legt die Pakete als root ab, der Cache-Upload liest sie als runner.
           sudo chown -R "$USER" "$HOME/apt-archives"
 
@@ -95,22 +91,20 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          # Issue-Text und PR-Code sind untrusted. Claude Code entfernt damit das
-          # OAuth-Token aus der Umgebung aller Bash-Aufrufe (GH_TOKEN bleibt) und
-          # verlangt die Bash-Sandbox. qa-settings.json nimmt agent-browser, gh und
-          # das Shop-Skript davon aus: sie brauchen Netz und den Browser.
-          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
         run: |
           set -o pipefail
           # shellcheck disable=SC2016 # envsubst bekommt den Variablennamen wörtlich
-          # Schreiben nur nach qa-report/, kein Lesen von /proc (Prozess-Umgebung).
+          # Issue-Text und PR-Code sind untrusted, das OAuth-Token liegt in der Umgebung.
+          # Deshalb: Schreiben nur nach qa-report/, kein Lesen von /proc, und kein
+          # Bash-Befehl, der beliebige Dateien ausgibt (cat, grep, head, tail).
+          # CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 wäre sauberer, braucht aber eine Sandbox
+          # mit verschachtelten User-Namespaces. Die sperrt der ubuntu-26.04-Runner.
           ./node_modules/.bin/claude -p "$(envsubst '$PR_NUMBER' < .github/prompts/qa.md)" \
             --model opus \
             --max-budget-usd 10 \
             --max-turns 300 \
-            --allowedTools "Skill,Read,Edit(qa-report/**),Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(mkdir:*),Bash(ls:*),Bash(grep:*),Bash(head:*),Bash(tail:*),Bash(sort:*)" \
+            --allowedTools "Skill,Read,Edit(qa-report/**),Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(mkdir:*),Bash(ls:*)" \
             --disallowedTools "Read(//proc/**)" \
-            --settings .github/prompts/qa-settings.json \
             --json-schema "$(cat .github/prompts/qa-verdict.schema.json)" \
             --output-format stream-json --verbose < /dev/null \
             | node .github/scripts/claude-live-log.mjs
