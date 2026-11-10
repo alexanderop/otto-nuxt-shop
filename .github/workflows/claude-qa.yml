@@ -37,6 +37,26 @@ jobs:
       verdict: ${{ steps.qa.outputs.verdict }}
       passed: ${{ steps.qa.outputs.passed }}
     steps:
+      # Issue-Text landet im Prompt. Fremde können auf einem public Repo Issues
+      # schreiben und so Anweisungen einschleusen (Prompt Injection). Deshalb liest
+      # Claude nur Issues, die der Repo-Owner selbst angelegt hat.
+      - name: Issue-Autor prüfen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          ISSUES=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json closingIssuesReferences --jq '.closingIssuesReferences[].number')
+          for N in $ISSUES; do
+            AUTHOR=$(gh issue view "$N" --repo "$REPO" --json author --jq '.author.login')
+            if [ "$AUTHOR" != "$OWNER" ]; then
+              echo "::error::Issue #${N} ist von ${AUTHOR}, nicht von ${OWNER}. QA läuft nur für Issues des Repo-Owners."
+              exit 1
+            fi
+            echo "Issue #${N} ist von ${AUTHOR}: ok"
+          done
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
