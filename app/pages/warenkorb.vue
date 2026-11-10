@@ -6,6 +6,19 @@ const FREE_SHIPPING = 79
 const shipping = computed(() => (cart.total.value >= FREE_SHIPPING || cart.total.value === 0 ? 0 : 5.95))
 const missingForFree = computed(() => Math.max(0, FREE_SHIPPING - cart.total.value))
 
+const coupon = useCoupon(cart.total)
+const couponInput = ref('')
+const couponError = ref('')
+
+function redeemCoupon() {
+  if (coupon.redeem(couponInput.value)) {
+    couponInput.value = ''
+    couponError.value = ''
+    return
+  }
+  couponError.value = 'Dieser Gutschein ist ungültig'
+}
+
 useHead({ title: 'Warenkorb | OTTO Demo' })
 </script>
 
@@ -46,8 +59,33 @@ useHead({ title: 'Warenkorb | OTTO Demo' })
         <dl class="summary__rows">
           <dt>Zwischensumme</dt><dd>{{ formatEuro(cart.total.value) }}</dd>
           <dt>Versand</dt><dd>{{ shipping ? formatEuro(shipping) : 'kostenlos' }}</dd>
-          <dt class="summary__total">Gesamt</dt><dd class="summary__total">{{ formatEuro(cart.total.value + shipping) }}</dd>
+          <template v-if="coupon.code.value">
+            <dt class="summary__discount">Gutschein ({{ coupon.code.value }})</dt>
+            <dd class="summary__discount">−{{ formatEuro(coupon.discount.value) }}</dd>
+          </template>
+          <dt class="summary__total">Gesamt</dt><dd class="summary__total">{{ formatEuro(cart.total.value - coupon.discount.value + shipping) }}</dd>
         </dl>
+        <div v-if="coupon.code.value" class="coupon coupon--applied">
+          <span>Gutschein <strong>{{ coupon.code.value }}</strong> eingelöst</span>
+          <button type="button" class="coupon__remove" @click="coupon.remove()">Gutschein entfernen</button>
+        </div>
+        <form v-else class="coupon" @submit.prevent="redeemCoupon">
+          <label for="coupon-code" class="coupon__label">Gutscheincode</label>
+          <div class="coupon__row">
+            <input
+              id="coupon-code"
+              v-model="couponInput"
+              class="coupon__input"
+              type="text"
+              autocomplete="off"
+              :aria-invalid="couponError ? 'true' : undefined"
+              aria-describedby="coupon-error"
+              @input="couponError = ''"
+            >
+            <button type="submit" class="coupon__submit">Einlösen</button>
+          </div>
+          <p id="coupon-error" class="coupon__error" role="alert">{{ couponError }}</p>
+        </form>
         <b2b-progress-bar
           v-if="missingForFree > 0"
           :progress="Math.round((cart.total.value / FREE_SHIPPING) * 100)"
@@ -161,6 +199,78 @@ useHead({ title: 'Warenkorb | OTTO Demo' })
   font-size: 18px;
   padding-top: 8px;
   border-top: 1px solid var(--otto-line);
+}
+
+.summary__discount {
+  color: var(--otto-green);
+}
+
+.coupon {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.coupon--applied {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.coupon__label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.coupon__row {
+  display: flex;
+  gap: 8px;
+}
+
+.coupon__input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--otto-line);
+  border-radius: 8px;
+  font: inherit;
+  text-transform: uppercase;
+}
+
+.coupon__input[aria-invalid='true'] {
+  border-color: #c00;
+}
+
+.coupon__submit {
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--otto-ink);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.coupon__error {
+  margin: 0;
+  min-height: 1em;
+  font-size: 13px;
+  color: #c00;
+}
+
+.coupon__remove {
+  white-space: nowrap;
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--otto-muted);
 }
 
 .summary b2b-progress-bar {
