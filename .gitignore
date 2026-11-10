@@ -23,3 +23,6 @@ logs
 .env.*
 !.env.example
 .talk-logs/
+
+# Ausgabe des QA-Agenten (lokal und in CI, dort als Artefakt)
+qa-report/
