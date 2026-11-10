@@ -1,26 +1,32 @@
-# Claude QA: Setzt jemand das Label `qa-verify` auf einen PR, prüft Claude Code
-# das verlinkte GitHub-Issue (das Ticket) im echten Browser. Der Report mit
-# Screenshots landet als PR-Kommentar.
+# Claude QA: Trägt ein PR das Label `qa-verify`, prüft Claude Code das verlinkte
+# GitHub-Issue (das Ticket) im echten Browser. Der Report mit Screenshots landet
+# als PR-Kommentar. Jeder neue Push auf einen PR mit Label prüft neu.
 #
-# Zwei Jobs, damit der Agent nie Schreibrechte bekommt:
+# Drei Jobs, damit der Agent nie Schreibrechte bekommt:
 #   qa      Claude testet, nur Lesezugriff, schreibt qa-report/ als Artefakt
-#   report  ohne Claude: Belege auf den Branch qa-evidence, Kommentar, Merge-Gate
+#   report  ohne Claude: Belege auf den Branch qa-evidence, Kommentar
+#   gate    Merge-Gate, läuft bei jedem PR-Event. Als Required Check auf main
+#           eingetragen: rot, bis ein QA-Lauf für den Head-Commit bestanden ist
 name: Claude QA
 
 on:
   pull_request:
-    types: [labeled]
+    types: [opened, reopened, synchronize, labeled]
 
 permissions: {}
 
+# Ein fremdes Label (alles außer qa-verify) landet in einer eigenen Gruppe und
+# bricht deshalb keinen laufenden QA-Lauf ab.
 concurrency:
-  group: claude-qa-${{ github.event.pull_request.number }}
+  group: claude-qa-${{ github.event.pull_request.number }}-${{ github.event.action != 'labeled' || github.event.label.name == 'qa-verify' }}
   cancel-in-progress: true
 
 jobs:
   qa:
     name: QA im Browser
-    if: github.event.label.name == 'qa-verify'
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'qa-verify')
+      && (github.event.action != 'labeled' || github.event.label.name == 'qa-verify')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -55,7 +61,9 @@ jobs:
           # ffmpeg für `agent-browser record` (Video des QA-Laufs)
           sudo apt-get install --yes --no-install-recommends ffmpeg
 
-      - name: Start shop (verify-otto-shop skill)
+      - name: Start shop (verify-otto-shop skill, Production-Build)
+        env:
+          OTTO_VERIFY_MODE: prod
         run: .claude/skills/verify-otto-shop/scripts/otto-verify.sh launch
 
       - name: Claude QA (live)
@@ -64,13 +72,19 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Issue-Text und PR-Code sind untrusted. Claude Code entfernt damit das
+          # OAuth-Token aus der Umgebung aller Bash-Aufrufe (GH_TOKEN bleibt).
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1"
         run: |
           set -o pipefail
-          ./node_modules/.bin/claude -p "$(envsubst < .github/prompts/qa.md)" \
+          # shellcheck disable=SC2016 # envsubst bekommt den Variablennamen wörtlich
+          # Schreiben nur nach qa-report/, kein Lesen von /proc (Prozess-Umgebung).
+          ./node_modules/.bin/claude -p "$(envsubst '$PR_NUMBER' < .github/prompts/qa.md)" \
             --model opus \
             --max-budget-usd 10 \
             --max-turns 300 \
-            --allowedTools "Skill,Read,Write,Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(mkdir:*),Bash(cp:*),Bash(ls:*),Bash(cat:*),Bash(grep:*),Bash(head:*),Bash(tail:*),Bash(sort:*),Bash(export:*)" \
+            --allowedTools "Skill,Read,Edit(qa-report/**),Bash(agent-browser:*),Bash(.claude/skills/verify-otto-shop/scripts/otto-verify.sh:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(mkdir:*),Bash(ls:*),Bash(grep:*),Bash(head:*),Bash(tail:*),Bash(sort:*)" \
+            --disallowedTools "Read(//proc/**)" \
             --json-schema "$(cat .github/prompts/qa-verdict.schema.json)" \
             --output-format stream-json --verbose < /dev/null \
             | node .github/scripts/claude-live-log.mjs
@@ -84,9 +98,9 @@ jobs:
           if-no-files-found: ignore
 
   report:
-    name: Report und Merge-Gate
+    name: Report als PR-Kommentar
     needs: qa
-    if: always() && needs.qa.result != 'skipped'
+    if: ${{ !cancelled() && needs.qa.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -94,6 +108,7 @@ jobs:
       pull-requests: write # postet den Report als PR-Kommentar
     steps:
       - name: Download evidence
+        continue-on-error: true # ohne Artefakt postet der nächste Schritt einen Fehler-Kommentar
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: qa-report-pr-${{ github.event.pull_request.number }}
@@ -101,7 +116,7 @@ jobs:
 
       - name: Video als GIF (läuft direkt im Kommentar)
         run: |
-          VIDEO=$(find qa-report -name '*.webm' | head -n 1)
+          VIDEO=$(find qa-report -name '*.webm' 2> /dev/null | head -n 1)
           if [ -z "$VIDEO" ]; then
             echo "Kein Video im Report"
             exit 0
@@ -120,8 +135,17 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_ID: ${{ github.run_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          QA_RESULT: ${{ needs.qa.result }}
+          VERDICT: ${{ needs.qa.outputs.verdict }}
+          PASSED: ${{ needs.qa.outputs.passed }}
         run: |
-          test -f qa-report/report.md || { echo "Claude hat keinen Report geschrieben"; exit 1; }
+          # shellcheck disable=SC2016 # Backticks im Kommentartext sind Markdown
+          if [ ! -f qa-report/report.md ]; then
+            printf '**Claude QA: kein Report** · ❌ nicht bestanden\n\nDer QA-Lauf endete ohne Report (Job-Ergebnis: `%s`). Das Merge-Gate bleibt rot.\n\nLive-Log: %s\n' \
+              "$QA_RESULT" "$RUN_URL" > comment.md
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file comment.md
+            exit 0
+          fi
           DEST="pr-${PR_NUMBER}/run-${RUN_ID}"
 
           gh auth setup-git
@@ -131,35 +155,80 @@ jobs:
             git init --quiet --initial-branch qa-evidence evidence
             git -C evidence remote add origin "https://github.com/${REPO}.git"
           fi
+          git -C evidence config user.name "github-actions[bot]"
+          git -C evidence config user.email "41898+github-actions[bot]@users.noreply.github.com"
           mkdir -p "evidence/${DEST}"
           cp -R qa-report/. "evidence/${DEST}/"
+          # Das WebM bleibt nur im Actions-Artefakt. Auf dem Branch reicht das GIF,
+          # sonst wächst qa-evidence mit jedem Lauf um mehrere MB.
+          rm -f "evidence/${DEST}"/video/*.webm
           git -C evidence add .
-          git -C evidence -c user.name="github-actions[bot]" -c user.email="41898+github-actions[bot]@users.noreply.github.com" \
-            commit --quiet -m "QA-Belege PR #${PR_NUMBER}, Run ${RUN_ID}"
-          git -C evidence push --quiet origin qa-evidence
+          git -C evidence commit --quiet -m "QA-Belege PR #${PR_NUMBER}, Run ${RUN_ID}"
+          # Läuft parallel ein zweiter PR, ist der Branch inzwischen weiter: rebasen, neu pushen.
+          for attempt in 1 2 3; do
+            if git -C evidence push --quiet origin qa-evidence; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "Push auf qa-evidence dreimal gescheitert"
+              exit 1
+            fi
+            git -C evidence pull --quiet --rebase origin qa-evidence
+          done
 
           RAW="https://raw.githubusercontent.com/${REPO}/qa-evidence/${DEST}"
-          BLOB="https://github.com/${REPO}/blob/qa-evidence/${DEST}"
-          sed -e "s#](screenshots/#](${RAW}/screenshots/#g" \
-              -e "s#](video/#](${BLOB}/video/#g" \
-              qa-report/report.md > report-linked.md
+          # Das Urteil in der Kopfzeile kommt aus dem JSON des Agenten, also aus
+          # derselben Quelle wie das Merge-Gate. Eine eigene Urteilszeile im Report fliegt raus.
+          if [ "$PASSED" = "true" ]; then
+            STATUS="✅ bestanden"
+          else
+            STATUS="❌ nicht bestanden"
+          fi
           {
-            head -n 1 report-linked.md
+            printf '**Urteil: %s** · %s\n' "${VERDICT:-keins}" "$STATUS"
             if [ -f qa-report/video/qa-run.gif ]; then
               printf '\n![Video des QA-Laufs, 2x schneller](%s/video/qa-run.gif)\n' "$RAW"
-              printf '\n_Video des ganzen Laufs, doppelte Geschwindigkeit._\n'
+              printf '\n_Video des ganzen Laufs, doppelte Geschwindigkeit._\n\n'
             fi
-            tail -n +2 report-linked.md
+            sed -e '1{/^\*\*Urteil:/d;}' \
+                -e "s|](screenshots/|](${RAW}/screenshots/|g" \
+                -e "s|](video/[^)]*)|](${RUN_URL}#artifacts)|g" \
+                qa-report/report.md
+            printf '\n\n---\nLive-Log und Artefakte (Video als WebM): %s\n' "$RUN_URL"
           } > comment.md
-          printf '\n\n---\nLive-Log und Artefakte: %s\n' "$RUN_URL" >> comment.md
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file comment.md
 
+  gate:
+    name: Merge-Gate
+    needs: [qa, report]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      actions: read # sucht einen früheren bestandenen QA-Lauf für denselben Commit
+    steps:
       - name: Merge gate
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          QA_RESULT: ${{ needs.qa.result }}
           VERDICT: ${{ needs.qa.outputs.verdict }}
           PASSED: ${{ needs.qa.outputs.passed }}
         run: |
+          if [ "$QA_RESULT" = "skipped" ]; then
+            # Kein QA in diesem Run: Label fehlt, oder es kam nur ein fremdes Label dazu.
+            # Grün nur, wenn derselbe Commit schon einen bestandenen Lauf hat.
+            DONE=$(gh api "repos/${REPO}/actions/workflows/claude-qa.yml/runs?head_sha=${HEAD_SHA}&status=success" --jq '.total_count')
+            if [ "$DONE" -gt 0 ]; then
+              echo "QA für ${HEAD_SHA} ist schon bestanden"
+              exit 0
+            fi
+            echo "::error::Kein bestandener QA-Lauf für ${HEAD_SHA}. Label qa-verify setzen."
+            exit 1
+          fi
           echo "passed: ${PASSED:-keins} · Urteil: ${VERDICT:-keins}"
           if [ "$PASSED" != "true" ]; then
+            echo "::error::QA nicht bestanden (Urteil: ${VERDICT:-keins})"
             exit 1
           fi
