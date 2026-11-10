@@ -113,6 +113,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -o pipefail
+          # Ohne die Ordner scheitern der erste Screenshot und die Videoaufnahme.
+          mkdir -p qa-report/screenshots qa-report/video
           # shellcheck disable=SC2016 # envsubst bekommt den Variablennamen wörtlich
           # Issue-Text und PR-Code sind untrusted, das OAuth-Token liegt in der Umgebung.
           # Deshalb: Schreiben nur nach qa-report/, kein Lesen von /proc, und kein
