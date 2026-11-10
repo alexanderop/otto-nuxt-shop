@@ -1,0 +1,10 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "excludedCommands": [
+      "agent-browser",
+      "gh",
+      ".claude/skills/verify-otto-shop/scripts/otto-verify.sh"
+    ]
+  }
+}
