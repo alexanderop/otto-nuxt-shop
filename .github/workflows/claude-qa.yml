@@ -55,6 +55,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Agent Browser (aus dem Lockfile)
+        timeout-minutes: 5 # dauert normal 30 s; ein hängender Download soll nicht 30 Min blockieren
         run: |
           echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
           ./node_modules/.bin/agent-browser install --with-deps
