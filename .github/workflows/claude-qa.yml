@@ -54,8 +54,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Der Ubuntu-Mirror der Runner ist an manchen Tagen so langsam, dass 130 MB
+      # Pakete über 10 Minuten brauchen. Die .deb-Dateien liegen deshalb im Cache.
+      - name: apt-Cache vorbereiten
+        id: apt
+        run: |
+          mkdir -p "$HOME/apt-archives/partial"
+          echo "Dir::Cache::Archives \"$HOME/apt-archives\";" | sudo tee /etc/apt/apt.conf.d/99qa-cache
+          echo "image=${ImageOS:-linux}-${ImageVersion:-0}" >> "$GITHUB_OUTPUT"
+
+      - name: apt-Cache laden
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/apt-archives
+          key: qa-apt-${{ steps.apt.outputs.image }}
+          restore-keys: qa-apt-
+
       - name: Install Agent Browser (aus dem Lockfile)
-        timeout-minutes: 5 # dauert normal 30 s; ein hängender Download soll nicht 30 Min blockieren
+        timeout-minutes: 12 # mit Cache 30 s; nur der erste Lauf eines PR lädt alles vom Mirror
         run: |
           echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
           ./node_modules/.bin/agent-browser install --with-deps
@@ -65,6 +81,8 @@ jobs:
           sudo apt-get install --yes --no-install-recommends ffmpeg socat bubblewrap
           # Ubuntu sperrt User-Namespaces per AppArmor, bubblewrap braucht sie.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          # apt legt die Pakete als root ab, der Cache-Upload liest sie als runner.
+          sudo chown -R "$USER" "$HOME/apt-archives"
 
       - name: Start shop (verify-otto-shop skill, Production-Build)
         env:
@@ -97,6 +115,19 @@ jobs:
             --output-format stream-json --verbose < /dev/null \
             | node .github/scripts/claude-live-log.mjs
 
+      - name: Video als GIF (läuft direkt im Kommentar)
+        if: always()
+        run: |
+          VIDEO=$(find qa-report -name '*.webm' 2> /dev/null | head -n 1)
+          if [ -z "$VIDEO" ]; then
+            echo "Kein Video im Report"
+            exit 0
+          fi
+          ffmpeg -v error -y -i "$VIDEO" \
+            -vf "setpts=PTS/2,fps=4,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" \
+            -loop 0 qa-report/video/qa-run.gif
+          ls -la qa-report/video/
+
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -121,20 +152,6 @@ jobs:
         with:
           name: qa-report-pr-${{ github.event.pull_request.number }}
           path: qa-report
-
-      - name: Video als GIF (läuft direkt im Kommentar)
-        run: |
-          VIDEO=$(find qa-report -name '*.webm' 2> /dev/null | head -n 1)
-          if [ -z "$VIDEO" ]; then
-            echo "Kein Video im Report"
-            exit 0
-          fi
-          sudo apt-get install --yes --no-install-recommends ffmpeg
-          mkdir -p qa-report/video
-          ffmpeg -v error -y -i "$VIDEO" \
-            -vf "setpts=PTS/2,fps=4,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" \
-            -loop 0 qa-report/video/qa-run.gif
-          ls -la qa-report/video/
 
       - name: Publish screenshots and comment
         env:
